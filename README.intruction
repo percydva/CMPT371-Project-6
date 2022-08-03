@@ -1,0 +1,19 @@
+## File structure:
+game.py: set up client and game mechanism
+server.py: set up server
+network.py: set up socket for network
+run.py: to boot up the game
+
+## Set up:
+* install pygame:
+```bash
+python3 -m pip install -U pygame --user
+```
+* run server:
+```bash
+python3 server.py
+```
+* run client on different machine:
+```bash 
+python3 run.py 
+```
