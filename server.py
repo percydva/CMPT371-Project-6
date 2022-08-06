@@ -1,10 +1,12 @@
+from copyreg import pickle
 import socket
 from _thread import *
-import sys
+import pickle
+from game import Player
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = 'local ipv4 addr'
+server = '192.168.1.71'
 port = 5555
 
 server_ip = socket.gethostbyname(server)
@@ -18,41 +20,39 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for a connection")
 
-currentId = "0"
-pos = ["0:50,50", "1:100,100"]
-def threaded_client(conn):
-    global currentId, pos
-    conn.send(str.encode(currentId))
-    currentId = "1"
+players = [Player(0, 0, 50, 50, (255, 0 , 0)), Player(100, 100, 50, 50, (0, 0 , 255))]
+def threaded_client(conn, player):
+    # global currentId, pos
+    conn.send(pickle.dumps(players[player]))
     reply = ''
     while True:
         try:
-            data = conn.recv(2048)
-            reply = data.decode('utf-8')
+            data = pickle.loads(conn.recv(2048))
+            # reply = data.decode('utf-8')
+            players[player] = data
             if not data:
-                conn.send(str.encode("Goodbye"))
+                print('Disconnected')
                 break
             else:
-                print("Recieved: " + reply)
-                arr = reply.split(":")
-                id = int(arr[0])
-                pos[id] = reply
+                print("Recieved: ", data)
 
-                if id == 0: nid = 1
-                if id == 1: nid = 0
+                if player == 0: reply = players[1]
+                if player == 1: reply = players[0]
 
-                reply = pos[nid][:]
-                print("Sending: " + reply)
+                # reply = pos[nid][:]
+                print("Sending: ", reply)
 
-            conn.sendall(str.encode(reply))
+            conn.sendall(pickle.dumps(reply))
         except:
             break
 
     print("Connection Closed")
     conn.close()
 
+currPlayer = 0
 while True:
     conn, addr = s.accept()
     print("Connected to: ", addr)
 
-    start_new_thread(threaded_client, (conn,))
+    start_new_thread(threaded_client, (conn, currPlayer))
+    currPlayer += 1

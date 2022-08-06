@@ -3,16 +3,17 @@ from network import Network
 
 
 class Player():
-    width = height = 50
-
-    def __init__(self, startx, starty, color=(255,0,0)):
+    def __init__(self, startx, starty, width, height, color):
         self.x = startx
         self.y = starty
-        self.velocity = 2
+        self.width = width
+        self.height = height
+        self.velocity = 3
         self.color = color
+        self.rect = (startx, starty, width, height)
 
     def draw(self, g):
-        pygame.draw.rect(g, self.color ,(self.x, self.y, self.width, self.height), 0)
+        pygame.draw.rect(g, self.color , self.rect)
 
     def move(self, dirn):
         """
@@ -28,6 +29,10 @@ class Player():
             self.y -= self.velocity
         else:
             self.y += self.velocity
+        self.update()
+        
+    def update(self):
+        self.rect = (self.x, self.y, self.width, self.height)
 
 
 class Game:
@@ -36,17 +41,17 @@ class Game:
         self.net = Network()
         self.width = w
         self.height = h
-        self.player = Player(50, 50)
-        self.player2 = Player(100,100, (0, 255, 0))
-        # self.player3 = Player()
+        self.player = Player(50, 50, 50, 50, (255, 0 ,0))
+        self.player2 = Player(100, 100, 50, 50, (0, 255, 0))
         self.canvas = Canvas(self.width, self.height, "Testing...")
 
     def run(self):
         clock = pygame.time.Clock()
         run = True
+        self.player = self.net.getID()
         while run:
             clock.tick(60)
-
+            self.player2 = self.net.send(self.player)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
@@ -73,7 +78,7 @@ class Game:
                     self.player.move(3)
 
             # Send Network Stuff
-            self.player2.x, self.player2.y = self.parse_data(self.send_data())
+            # self.player2.x, self.player2.y = self.parse_data(self.send_data())
 
             # Update Canvas
             self.canvas.draw_background()
