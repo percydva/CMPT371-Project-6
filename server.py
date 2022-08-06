@@ -6,7 +6,7 @@ from game import Player
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = '192.168.1.71'
+server = '192.168.1.69'
 port = 5555
 
 server_ip = socket.gethostbyname(server)
@@ -20,29 +20,23 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for a connection")
 
-players = [Player(0, 0, 50, 50, (255, 0 , 0)), Player(100, 100, 50, 50, (0, 0 , 255))]
+players = [
+            Player(0, 0, 50, 50, (255, 0 , 0)),
+            Player(100, 100, 50, 50, (0, 0 , 255)), 
+            Player(150, 150, 50, 50, (0, 0, 255)),
+            Player(200, 200, 50, 50, (255, 0, 255))
+          ]
+
 def threaded_client(conn, player):
-    # global currentId, pos
-    conn.send(pickle.dumps(players[player]))
-    reply = ''
+    conn.send(pickle.dumps(player)) # On initial connection
     while True:
         try:
             data = pickle.loads(conn.recv(2048))
-            # reply = data.decode('utf-8')
             players[player] = data
             if not data:
-                print('Disconnected')
+                print("Connection lost.")
                 break
-            else:
-                print("Recieved: ", data)
-
-                if player == 0: reply = players[1]
-                if player == 1: reply = players[0]
-
-                # reply = pos[nid][:]
-                print("Sending: ", reply)
-
-            conn.sendall(pickle.dumps(reply))
+            conn.sendall(pickle.dumps(players))
         except:
             break
 

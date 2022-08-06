@@ -1,5 +1,5 @@
 import pygame
-from network import Network
+from network import Network as net
 
 
 class Player():
@@ -11,6 +11,7 @@ class Player():
         self.velocity = 3
         self.color = color
         self.rect = (startx, starty, width, height)
+        self.player.id = -1 # Initialize at invalid value, gets updated when player connects
 
     def draw(self, g):
         pygame.draw.rect(g, self.color , self.rect)
@@ -38,20 +39,20 @@ class Player():
 class Game:
 
     def __init__(self, w, h):
-        self.net = Network()
         self.width = w
         self.height = h
-        self.player = Player(50, 50, 50, 50, (255, 0 ,0))
+        self.player1 = Player(50, 50, 50, 50, (255, 0 ,0))
         self.player2 = Player(100, 100, 50, 50, (0, 255, 0))
+        self.player3 = Player(150, 150, 50, 50, (0, 0, 255))
+        self.player4 = Player(200, 200, 50, 50, (255, 0, 255))
         self.canvas = Canvas(self.width, self.height, "Testing...")
 
     def run(self):
         clock = pygame.time.Clock()
         run = True
-        self.player = self.net.getID()
         while run:
             clock.tick(60)
-            self.player2 = self.net.send(self.player)
+            self.send_data()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
@@ -77,13 +78,12 @@ class Game:
                 if self.player.y <= self.height - self.player.velocity:
                     self.player.move(3)
 
-            # Send Network Stuff
-            # self.player2.x, self.player2.y = self.parse_data(self.send_data())
-
             # Update Canvas
             self.canvas.draw_background()
-            self.player.draw(self.canvas.get_canvas())
+            self.player1.draw(self.canvas.get_canvas())
             self.player2.draw(self.canvas.get_canvas())
+            self.player3.draw(self.canvas.get_canvas())
+            self.player4.draw(self.canvas.get_canvas())
             self.canvas.update()
 
         pygame.quit()
@@ -91,11 +91,37 @@ class Game:
     def send_data(self):
         """
         Send position to server
-        :return: None
+        Gets location of other players in response
         """
-        data = str(self.net.id) + ":" + str(self.player.x) + "," + str(self.player.y)
-        reply = self.net.send(data)
-        return reply
+        data = str(self.player.id) + ":" + str(self.player.x) + "," + str(self.player.y)
+        players = self.net.send(data)
+        
+        # Probably a cleaner way to do this!
+        # The server just got the update we sent to it, and has probably
+        # finished updating this player's position before we get the response
+        # back. Can we just set the position of all 4 players?
+        # Concerned that might cause some stuttering for the player, 
+        # or maybe some other negative effects, depending on order things happen.
+        # This *is* safer, just looks a little messy.
+        if self.player.id == 0:
+            self.player2 = players[1]
+            self.player3 = players[2]
+            self.player4 = players[3]
+        elif self.player.id == 1:
+            self.player1 = players[0]
+            self.player3 = players[2]
+            self.player4 = players[3]
+        elif self.player.id == 2:
+            self.player1 = players[0]
+            self.player2 = players[1]
+            self.player4 = players[3]
+        elif self.player.id == 2:
+            self.player1 = players[0]
+            self.player2 = players[1]
+            self.player3 = players[2]
+        else:
+            print("ERROR [game.py]: Player ID not found!")
+            print()
 
     @staticmethod
     def parse_data(data):
