@@ -1,10 +1,10 @@
 # CMPT371-Project-6
 Final Project for CMPT 371: Networking, Summer 2022
 
-######cd into the folder
+cd into the folder
 
-######open 1.Terminal for: server.py eg: py server.py
+open 1.Terminal for: server.py eg: py server.py
 
-######open 2.Terminal for: client.py eg: py client.py localhost 80
+open 2.Terminal for: client.py eg: py client.py localhost 80
 
-######choose to open other terminal using the same command
+choose to open other terminal using the same command
