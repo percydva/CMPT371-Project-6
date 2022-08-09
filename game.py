@@ -43,7 +43,10 @@ class Game:
         self.height = h
         self.player = Player(50, 50, 50, 50, (255, 0 ,0))
         self.player2 = Player(100, 100, 50, 50, (0, 255, 0))
+        self.player3 = Player(0, 0, 50, 50, (0, 0, 255))
+        self.player4 = Player(0, 50, 50, 50, (0, 0, 0))
         self.canvas = Canvas(self.width, self.height, "Testing...")
+
 
     def run(self):
         clock = pygame.time.Clock()
@@ -52,6 +55,8 @@ class Game:
         while run:
             clock.tick(60)
             self.player2 = self.net.send(self.player)
+            self.player3 = self.net.send(self.player)
+            self.player4 = self.net.send(self.player)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False
@@ -83,27 +88,39 @@ class Game:
             # Update Canvas
             self.canvas.draw_background()
             self.player.draw(self.canvas.get_canvas())
-            self.player2.draw(self.canvas.get_canvas())
+            for obj2 in self.player2:
+                obj2.draw(self.canvas.get_canvas())
+            for obj3 in self.player3:
+                obj3.draw(self.canvas.get_canvas())
+            for obj4 in self.player4:
+                print('obj4 is draw at:', obj4)
+                obj4.draw(self.canvas.get_canvas())
+            
+            # self.player2.draw(self.canvas.get_canvas())
+            # self.player3.draw(self.canvas.get_canvas())
+            # self.player4.draw(self.canvas.get_canvas())
             self.canvas.update()
 
         pygame.quit()
 
-    def send_data(self):
-        """
-        Send position to server
-        :return: None
-        """
-        data = str(self.net.id) + ":" + str(self.player.x) + "," + str(self.player.y)
-        reply = self.net.send(data)
-        return reply
+    
 
-    @staticmethod
-    def parse_data(data):
-        try:
-            d = data.split(":")[1].split(",")
-            return int(d[0]), int(d[1])
-        except:
-            return 0,0
+    # def send_data(self):
+    #     """
+    #     Send position to server
+    #     :return: None
+    #     """
+    #     data = str(self.net.id) + ":" + str(self.player.x) + "," + str(self.player.y)
+    #     reply = self.net.send(data)
+    #     return reply
+
+    # @staticmethod
+    # def parse_data(data):
+    #     try:
+    #         d = data.split(":")[1].split(",")
+    #         return int(d[0]), int(d[1])
+    #     except:
+    #         return 0,0
 
 
 class Canvas:
