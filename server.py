@@ -18,6 +18,7 @@ class BubbleManager:
 
     def __init__(self, server):
         self.is_active = False
+        self.create_bubbles = False
         self._next_id = 0
         self.bubbles = {}
         self.server = server
@@ -53,7 +54,7 @@ class BubbleManager:
         self.func_add(bubble)
 
     def create_bubble(self):
-        while self.is_active:
+        while self.create_bubbles:
             if self.server.has_sessions():
                 self.create_new_bubble()
             time.sleep(random.randint(10, 20) / 10)
@@ -72,6 +73,7 @@ class BubbleManager:
 
     def start(self):
         self.is_active = True
+        self.create_bubbles = True
         self.create_bubble_thread = threading.Thread(target=self.create_bubble, args=(), daemon=True)
         self.create_bubble_thread.start()
         self.expire_bubble_thread = threading.Thread(target=self.expire_bubble, args=(), daemon=True)
@@ -132,7 +134,6 @@ class BubbleManager:
         logging.debug(f'player {player_id} locks bubble {bubble_id}')
         self.server.lock_bubble(bubble_id, player_id)
         return True
-
 
 class Server:
 
@@ -268,6 +269,17 @@ class Server:
                     message['players'][player_id] = {}
                     message['players'][player_id]['score'] = self.players[player_id]['score']
                 session.write_message(message)
+            case 'game_won':
+                self.bubble_manager.create_bubbles = False
+                # Reset scores when someone wins to avoid infinite looping
+                for player in self.players:
+                        self.players[player]['score'] = 0
+                message = {
+                    'action': 'game_won',
+                    'player_id': message['player_id'],
+                }
+                self.broadcast(message)
+
 
     def _handle_messages(self):
         while True:

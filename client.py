@@ -198,6 +198,13 @@ class Client:
                 pass
             case 'status':
                 self.players = message['players']
+            case 'game_won':
+                # Reset scores when someone wins to avoid infinite looping
+                self.player_score = 0
+                for player in self.players:
+                        self.players[player]['score'] = 0
+                winner_id = message['player_id']
+                global_font.render(f'Player {winner_id} wins!', True, 'white')
             case _:
                 print('unknown message:', message)
 
@@ -240,7 +247,15 @@ class Client:
         status = []
         for player_id in self.players:
             status.append((player_id, self.players[player_id]['score']))
+            if self.players[player_id]['score'] >= 100:
+                self.game_won(player_id)
         return status
+    
+    def game_won(self, player_id):
+        self.write_message({
+            'action': 'game_won',
+            'player_id': player_id
+        })
 
 def main(server_address):
     screen = pygame.display.get_surface()
