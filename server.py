@@ -3,9 +3,10 @@ import threading
 import time
 import random
 import logging
+from collections import deque
 
-from common import Session, SessionException
-from common import (
+from session import Session, SessionException
+from config import (
     BUBBLE_MIN_LIFETIME_SEC, BUBBLE_MAX_LIFETIME_SEC,
     BUBBLE_MIN_VALUE, BUBBLE_MAX_VALUE,
     BUBBLE_MAX_RADIUS, BUBBLE_MIN_RADIUS,
@@ -21,8 +22,6 @@ class BubbleManager:
         self._next_id = 0
         self.bubbles = {}
         self.server = server
-        self.func_add = self.server.bubble_added
-        self.func_expire = self.server.bubble_expired
 
     def next_id(self):
         result = self._next_id
@@ -50,7 +49,7 @@ class BubbleManager:
             'value': value,
         }
         self.bubbles[id] = bubble
-        self.func_add(bubble)
+        self.server.bubble_added(bubble)
 
     def create_bubble(self):
         while self.is_active:
@@ -66,7 +65,7 @@ class BubbleManager:
                 if self.bubbles[bubble_id]['expire_time_s'] <= now:
                     expired_bubbles.append(bubble_id)
             for bubble_id in expired_bubbles:
-                self.func_expire(bubble_id)
+                self.server.bubble_expired(bubble_id)
                 del self.bubbles[bubble_id]
             time.sleep(0.1)
 
@@ -94,7 +93,7 @@ class BubbleManager:
                     player_id = bubble['locked_by']
                     del self.bubbles[bubble_id]
                     self.server.consume_bubble(player_id, bubble)
-                    logging.debug(f'player {player_id} consumed bubble {bubble_id}')
+                    pass # logging.debug(f'player {player_id} consumed bubble {bubble_id}')
 
     def get_value(self, bubble_id):
         return self.bubbles[bubble_id]['value']
@@ -103,16 +102,16 @@ class BubbleManager:
         if bubble_id not in self.bubbles:
             # the bubble is expired
             # or is an invalid bubble does exist
-            logging.debug(f'bubble {bubble_id} does not exist')
+            pass # logging.debug(f'bubble {bubble_id} does not exist')
             return
         
         locked_by = self.bubbles[bubble_id]['locked_by']
         if locked_by:
             if locked_by != player_id:
-                logging.debug(f'bubble {bubble_id} is already locked by another player {locked_by}')
+                pass # logging.debug(f'bubble {bubble_id} is already locked by another player {locked_by}')
                 self.server.lock_failed(player_id, bubble_id)
             else:
-                logging.debug(f'bubble {bubble_id} is already locked by same player {player_id}')
+                pass # logging.debug(f'bubble {bubble_id} is already locked by same player {player_id}')
             return
 
         assert locked_by is None
@@ -123,13 +122,13 @@ class BubbleManager:
                 self.bubbles[id]['locked_by'] = None
                 # only one bubble can be locked by a player at a time
                 # so no need to continue searching
-                logging.debug(f'release previously locked bubble {id}')
+                pass # logging.debug(f'release previously locked bubble {id}')
                 # TODO: send unlock message to clients?
                 break
         
         self.bubbles[bubble_id]['locked_by'] = player_id
         self.bubbles[bubble_id]['lock_time'] = time.time()
-        logging.debug(f'player {player_id} locks bubble {bubble_id}')
+        pass # logging.debug(f'player {player_id} locks bubble {bubble_id}')
         self.server.lock_bubble(bubble_id, player_id)
         return True
 
@@ -142,20 +141,29 @@ class Server:
         self.listen_socket.bind(('0.0.0.0', port))
         self.listen_socket.listen()
         
-        # start a thread to accept clients
         self.sessions = {}
-        self.messages_from_clients = []
+
+        # start a thread to accept clients
+        self.messages_from_clients = deque()
         self._accept_client_thread = threading.Thread(target=self._accept_client, args=(), daemon=True)
         self._accept_client_thread.start()
 
         self.bubble_manager = BubbleManager(self)
         self.bubble_manager.start()
 
+        self._status_thread = threading.Thread(target=self._status, args=(), daemon=True)
+        self._status_thread.start()
+
         # start a thread to handle client messages    
         self.players = {}
         self._handle_messages_thread = threading.Thread(target=self._handle_messages, args=())
         self._handle_messages_thread.start()
         self._handle_messages_thread.join()
+
+    def _status(self):
+        while True:
+            print(f'#sessions: {len(self.sessions)}, #bubbles: {len(self.bubble_manager.bubbles)}, #messages: {len(self.messages_from_clients)}\r', end='')
+            time.sleep(0.5)
 
     def has_sessions(self):
         return len(self.sessions) > 0
@@ -178,31 +186,37 @@ class Server:
         self.broadcast(message)
 
     def remove_session(self, session):
-        logging.debug(f'remove session {session}')
+        # do not throw exceptions here!
+        pass # logging.debug(f'remove {session}')
         self.sessions.pop(session.remote_address, None)
         for player_id in list(self.players):
             if self.players[player_id]['session'] == session:
-                logging.debug(f'remove player {player_id}')
+                pass # logging.debug(f'remove player {player_id}')
                 self.players.pop(player_id, None)
+
+    def write_message(self, session, messasge):
+        try:
+            session.write_message(messasge)
+        except SessionException:
+            self.remove_session(session)
 
     def _accept_client(self):
         while True:
             socket, client_address = self.listen_socket.accept()
             session = Session(socket, client_address,
-                lambda session, message: self.messages_from_clients.append((session, message)),
-                lambda session: self.remove_session(session))
+                lambda session, message: self.messages_from_clients.append((session, message)))
             self.sessions[client_address] = session
-            logging.info(f'{client_address} connected')
+            pass # logging.info(f'{client_address} connected')
 
     def lock_failed(self, player_id, bubble_id):
-        self.players[player_id]['session'].write_message({
+        self.write_message(self.players[player_id]['session'], {
             'action': 'bubble_lock_failed',
             'bubble_id': bubble_id,
         })
 
     def broadcast(self, message):
         for session in list(self.sessions.values()):
-            session.write_message(message)
+            self.write_message(session, message)
 
     def lock_bubble(self, bubble_id, player_id):
         # we do not need to broadcast the unlock message
@@ -224,55 +238,51 @@ class Server:
         self.broadcast(message)
 
     def try_lock(self, bubble_id, player_id):
-        logging.debug(f'{player_id} try_lock {bubble_id}')
+        pass # logging.debug(f'{player_id} try_lock {bubble_id}')
         self.bubble_manager.try_lock(bubble_id, player_id)
 
     def create_player(self, session):
         return ':'.join(map(str, session.remote_address))
 
     def _handle_message(self, session, message):
-        match message.get('action', None):
-            case 'ping':
-                session.write_message(message)
-            case 'login':
-                player_id = self.create_player(session)
-                if player_id in self.players:
-                    old_session = self.players[player_id]['session']
-                    old_session.close()
-                    for client_address in list(self.sessions):
-                        if self.sessions[client_address] == old_session:
-                            del self.sessions[client_address]
-                            break
-                self.players[player_id] = {}
-                self.players[player_id]['session'] = session
-                self.players[player_id]['score'] = 0
-                #self.tokens[player_id] = self.generate_token()
-                message = {
-                    'action': 'login',
-                    'player_id': player_id,
-                    #'token': self.tokens[player_id],
-                }
-                session.write_message(message)
-            case 'lock':
-                bubble_id = message['bubble_id']
-                player_id = message['player_id']
-                self.try_lock(bubble_id, player_id)
-            case 'unlock':
-                pass
-            case 'status':
-                message = {
-                    'action': 'status',
-                    'players': {},
-                }
-                for player_id in list(self.players):
-                    message['players'][player_id] = {}
-                    message['players'][player_id]['score'] = self.players[player_id]['score']
-                session.write_message(message)
+        action = message.get('action', None)
+        if action == 'ping':
+            self.write_message(session, message)
+        elif action == 'login':
+            player_id = self.create_player(session)
+            if player_id in self.players:
+                old_session = self.players[player_id]['session']
+                old_session.close()
+                for client_address in list(self.sessions):
+                    if self.sessions[client_address] == old_session:
+                        del self.sessions[client_address]
+                        break
+            self.players[player_id] = {}
+            self.players[player_id]['session'] = session
+            self.players[player_id]['score'] = 0
+            message = {
+                'action': 'login',
+                'player_id': player_id,
+            }
+            self.write_message(session, message)
+        elif action == 'lock':
+            bubble_id = message['bubble_id']
+            player_id = message['player_id']
+            self.try_lock(bubble_id, player_id)
+        elif action == 'status':
+            message = {
+                'action': 'status',
+                'players': {},
+            }
+            for player_id in list(self.players):
+                message['players'][player_id] = {}
+                message['players'][player_id]['score'] = self.players[player_id]['score']
+            self.write_message(session, message)
 
     def _handle_messages(self):
         while True:
             while self.messages_from_clients:
-                session, message = self.messages_from_clients.pop(0)
+                session, message = self.messages_from_clients.popleft()
                 self._handle_message(session, message)
 
 if __name__ == '__main__':
