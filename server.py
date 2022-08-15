@@ -17,18 +17,18 @@ class BubbleManager:
     '''
     bubble manager to create, expire, and consume bubbles
     '''
-
+    #initialize the bubble manager
     def __init__(self, server):
         self.is_active = False
         self._next_id = 0
         self.bubbles = {}
         self.server = server
-
+    #next id for a bubble
     def next_id(self):
         result = self._next_id
         self._next_id += 1
         return result
-
+    # create a new bubble
     def create_new_bubble(self):
         id = self.next_id()
         position = random.randint(0, POOL_WIDTH), random.randint(0, POOL_HEIGHT)
@@ -51,13 +51,13 @@ class BubbleManager:
         }
         self.bubbles[id] = bubble
         self.server.bubble_added(bubble)
-
+    #create a new bubble
     def create_bubble(self):
         while self.is_active:
             if self.server.has_sessions():
                 self.create_new_bubble()
             time.sleep(random.randint(10, 20) / 10)
-
+    #expire a bubble
     def expire_bubble(self):
         while self.is_active:
             now = time.time()
@@ -69,7 +69,7 @@ class BubbleManager:
                 self.server.bubble_expired(bubble_id)
                 del self.bubbles[bubble_id]
             time.sleep(0.1)
-
+    #start the thread to create bubbles
     def start(self):
         self.is_active = True
         self.create_bubble_thread = threading.Thread(target=self.create_bubble, args=(), daemon=True)
@@ -78,7 +78,7 @@ class BubbleManager:
         self.expire_bubble_thread.start()
         self.check_bubble_thread = threading.Thread(target=self.check_bubble, args=(), daemon=True)
         self.check_bubble_thread.start()
-
+    #check if a bubble is expired ir active
     def check_bubble(self):
         while self.is_active:
             now = time.time()
@@ -95,10 +95,11 @@ class BubbleManager:
                     del self.bubbles[bubble_id]
                     self.server.consume_bubble(player_id, bubble)
                     pass # logging.debug(f'player {player_id} consumed bubble {bubble_id}')
-
+    #get the value for the bubble id
     def get_value(self, bubble_id):
         return self.bubbles[bubble_id]['value']
 
+    #try lock in the bubble
     def try_lock(self, bubble_id, player_id):
         if bubble_id not in self.bubbles:
             # the bubble is expired
@@ -135,7 +136,7 @@ class BubbleManager:
 
 
 class Server:
-
+    #initialize the server from the cient
     def __init__(self, port):
         self.port = port
         self.listen_socket = socket.socket()
@@ -194,7 +195,7 @@ class Server:
             if self.players[player_id]['session'] == session:
                 pass # logging.debug(f'remove player {player_id}')
                 self.players.pop(player_id, None)
-
+    #client side server write message
     def write_message(self, session, messasge):
         try:
             session.write_message(messasge)
@@ -209,13 +210,13 @@ class Server:
                 lambda session, message: self.messages_from_clients.append((session, message)))
             self.sessions[client_address] = session
             pass # logging.info(f'{client_address} connected')
-
+    #deal with client message when the lockin of the bubble has failed
     def lock_failed(self, player_id, bubble_id):
         self.write_message(self.players[player_id]['session'], {
             'action': 'bubble_lock_failed',
             'bubble_id': bubble_id,
         })
-
+    #broadcast message to all clients
     def broadcast(self, message):
         for session in list(self.sessions.values()):
             self.write_message(session, message)
@@ -293,7 +294,7 @@ class Server:
             while self.messages_from_clients:
                 session, message = self.messages_from_clients.popleft()
                 self._handle_message(session, message)
-
+#handle client message from the Terminal
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     import argparse
