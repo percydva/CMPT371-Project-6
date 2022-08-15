@@ -11,6 +11,7 @@ WIDTH, HEIGHT = POOL_WIDTH + STATUS_PANEL_WIDTH, POOL_HEIGHT
 class Bubble:
 
     def __str__(self):
+        #Client 
         return str({
             'id': self.id,
             'position': self.position,
@@ -20,7 +21,8 @@ class Bubble:
             'locked_by': self.locked_by,
             'locked_by_others': self.locked_by_others,
         })
-
+    
+    #Client initialize player id, position, radius, color, locked, locked_by, locked_by_others
     def __init__(self, config):
         self.id = config['id']
         self.position = config['position']
@@ -29,7 +31,8 @@ class Bubble:
         self.locked = False
         self.locked_by_others = False
         self.locked_by = None
-
+    
+    #Client draw bubbles on screen with pygame.draw.circle
     def draw(self, screen):
         pygame.draw.circle(
             screen,
@@ -48,10 +51,12 @@ class BubblePanel:
     '''
     Manage bubbles
     '''
+    #Client initialize bubbles with config.py file
     def __init__(self, surface):
         self.bubbles = {}
         self.surface = surface
 
+    #draw all bubbles on screen
     def draw(self):
         '''
         draw all bubbles
@@ -59,26 +64,29 @@ class BubblePanel:
         for b in self.bubbles.values():
             b.draw(self.surface)
 
+###
 def in_bubble(position, bubble):
     pos1 = position
     pos2 = bubble.position
     radius = bubble.radius
     return (pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2 <= radius ** 2
 
+#Centering the selected windows in the centered of the screen.
 def centered(parent, target):
     x = (parent.get_width() - target.get_width()) / 2
     y = (parent.get_height() - target.get_height()) / 2
     return x, y
 
-
+#Class status panel
 class StatusPanel:
-
+    #Client initialize status panel 
     def __init__(self, client, surface):
         self.client = client
         self.surface = surface
         self.color = (50, 50, 50)
         self.font = pygame.font.Font(None, 30)
-
+    
+    #render player_id (ip address) and player_score (score) and delay (delay)
     def draw(self):
         self.surface.fill(self.color)
         position = (10, 10)
@@ -89,7 +97,7 @@ class StatusPanel:
         delay_text = self.font.render(f'delay: {self.client.get_delay()}ms', True, 'white')
         self.surface.blit(delay_text, (10, self.surface.get_height() - 30))
 
-
+#Client initialize client with server_address and screen
 class Client:
     def __init__(self, server_addr, screen):
         self.socket = socket.socket()
@@ -109,14 +117,17 @@ class Client:
 
         self.sync_delay = 0
 
+    #get delay function from session class
     def get_delay(self):
         return int(self.delay * 1000)
 
+    #Client login
     def login(self):
         self.session.write_message({
             'action': 'login'
         })
 
+    #Handle message fucntion by reading message from socket using jason
     def handle_message(self, session, message):
         action = message.get('action', None)
         if action == 'ping':
@@ -150,10 +161,12 @@ class Client:
             self.players = message['players']
         else:
             print('unknown message:', message)
-
+    
+    #Client send message to server for server to handle
     def write_message(self, message):
         self.session.write_message(message)
 
+    #update function to keep server updated
     def update(self, tick_in_ms):
         self.sync_delay += tick_in_ms
         if self.sync_delay >= 1000:
