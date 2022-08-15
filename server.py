@@ -109,11 +109,6 @@ class BubbleManager:
         
         locked_by = self.bubbles[bubble_id]['locked_by']
         if locked_by:
-            if locked_by != player_id:
-                pass # logging.debug(f'bubble {bubble_id} is already locked by another player {locked_by}')
-                self.server.lock_failed(player_id, bubble_id)
-            else:
-                pass # logging.debug(f'bubble {bubble_id} is already locked by same player {player_id}')
             return
 
         assert locked_by is None
@@ -210,12 +205,6 @@ class Server:
                 lambda session, message: self.messages_from_clients.append((session, message)))
             self.sessions[client_address] = session
             pass # logging.info(f'{client_address} connected')
-    #deal with client message when the lockin of the bubble has failed
-    def lock_failed(self, player_id, bubble_id):
-        self.write_message(self.players[player_id]['session'], {
-            'action': 'bubble_lock_failed',
-            'bubble_id': bubble_id,
-        })
     #broadcast message to all clients
     def broadcast(self, message):
         for session in list(self.sessions.values()):

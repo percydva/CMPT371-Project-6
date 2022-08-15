@@ -154,14 +154,11 @@ class Client:
                     bubble.locked = False
                     bubble.locked_by_others = False
                     bubble.locked_by = None
-                    #bubble consumed message which is passed from server to client
+        #bubble consumed message which is passed from server to client
         elif action == 'bubble_consumed':
             bubble_id = message['bubble_id']
             del self.bubble_panel.bubbles[bubble_id]
-            #bubble lock failed message which is passed from server to client
-        elif action == 'bubble_lock_failed':
-            pass
-            #player status message which is passed from server to client
+        #player status message which is passed from server to client
         elif action == 'status':
             self.players = message['players']
             #game over message which is passed from server to client
