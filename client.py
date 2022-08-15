@@ -217,20 +217,7 @@ def main(server_address):
     clock = pygame.time.Clock()
     running = True
 
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                position = pygame.mouse.get_pos()
-                bubble = client.get_bubble_at(position)
-                if bubble:
-                    client.lock_bubble(bubble)
-
-        tick_in_ms = clock.tick(FPS)
-        client.update(tick_in_ms)
-        client.draw()
-        pygame.display.update()
+    
 
     pygame.quit()
         
@@ -254,3 +241,17 @@ if __name__ == '__main__':
         time.sleep(1) # wait for server to start
 
     main((args.server, args.port))
+while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                position = pygame.mouse.get_pos()
+                bubble = client.get_bubble_at(position)
+                if bubble:
+                    client.lock_bubble(bubble)
+
+        tick_in_ms = clock.tick(FPS)
+        client.update(tick_in_ms)
+        client.draw()
+        pygame.display.update()

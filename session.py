@@ -27,6 +27,16 @@ class Session:
         self.read_thread.start()
         self.write_thread.start()
 
+
+##
+# 
+#
+#
+#
+#
+#
+#
+
     def _write(self):
         try:
             while self.is_active:

@@ -21,3 +21,4 @@ def write_message(write, message):
     pass # logging.debug(f'write message: {message}')
     data = json.dumps(message).encode()
     write(struct.pack('!i', len(data)) + data)
+

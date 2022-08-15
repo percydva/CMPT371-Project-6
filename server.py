@@ -201,6 +201,7 @@ class Server:
         except SessionException:
             self.remove_session(session)
 
+
     def _accept_client(self):
         while True:
             socket, client_address = self.listen_socket.accept()
